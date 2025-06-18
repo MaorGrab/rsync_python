@@ -42,7 +42,7 @@ jobs:
         id: cache-venv-restore
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}
 
       - name: Set up virtual environment
         run: |
@@ -56,14 +56,13 @@ jobs:
           source .venv/bin/activate
           pip install --upgrade pip
           pip install -e .  # Install the package in editable mode
-          pip install -r requirements.txt
 
       - name: Save virtual environment to cache
         if: steps.cache-venv-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}
 
   lint:
     needs: build
@@ -82,7 +81,7 @@ jobs:
         id: cache-venv-restore
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}
 
       - name: Set up virtual environment
         run: |
@@ -111,7 +110,7 @@ jobs:
   #         id: cache-venv-restore
   #         with:
   #           path: .venv
-  #           key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+  #           key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}
 
   #       - name: Set up virtual environment
   #         run: |
