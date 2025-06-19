@@ -29,8 +29,8 @@ class Transfer:
         cmd = ["rsync", "-a"] + self.options + [self.source, self.dest]
         
         try:
-            if ShutdownHandler().is_set():
-                return False
+            # if ShutdownHandler().is_set():
+            #     return False
             # Start the rsync process
             self.process = subprocess.Popen(
                 cmd,
@@ -42,25 +42,29 @@ class Transfer:
             
             # Monitor progress in real-time
             while self.process.poll() is None:
-                if ShutdownHandler().is_set():
-                    break
+                # if ShutdownHandler().is_set():
+                #     return self.is_completed
                 line = self.process.stdout.readline()
                 self.progress.update_from_line(line)
             
             # Check for errors
-            if self.process.returncode != 0:
+            if ShutdownHandler().is_set():
+                pass
+            elif self.process.returncode != 0:
                 self.error = self.process.stderr.read()
             else:
                 self.is_completed = True
                 self.progress.set_complete()
+            return self.is_completed
+
         except Exception as e:
             self.error = str(e)
+            return self.is_completed
         
         finally:
-            line = self.process.stdout.readline()
-            self.progress.update_from_line(line)
+            # line = self.process.stdout.readline()
+            # self.progress.update_from_line(line)
             self.terminate()
-            return self.is_completed
         
     def terminate(self):
         if self.process and self.process.poll() is None:

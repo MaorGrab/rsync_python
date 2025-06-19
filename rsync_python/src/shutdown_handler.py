@@ -46,7 +46,9 @@ class ShutdownHandler:
 
     def _handle_sigint(self, signum, frame):
         """Internal SIGINT handler: sets shutdown_event."""
-        sys.stderr.write("\nSIGINT received. Shutting down...\n")
+        # sys.stderr.write("\nSIGINT received. Shutting down...\n")
+        sys.stdout.write("\033[F\n")
+        # sys.stdout.write("\033[K\n")
         # Setting the event allows worker threads to detect shutdown.
         self.shutdown_event.set()
         # Note: not invoking external callbacks here.

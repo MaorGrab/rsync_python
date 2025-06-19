@@ -112,7 +112,7 @@ class TransferManager:
                     line = t.get_status_line()
                     display.update_lines(idx, line)
                 except Exception as e:
-                    print(f'Couldn\'t get status line')
+                    print(f'Couldn\'t get status line: {e}')
             # time.sleep(1)
         display.stop()
         self._print_summary()

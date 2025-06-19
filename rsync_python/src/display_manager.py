@@ -14,21 +14,18 @@ class DisplayManager:
         self._thread = display_thread
         self.display_lock = threading.Lock()
         self._stop = threading.Event()
-        self._updated = False
         self._update_interval = 0.5
 
     def start(self):
         self._thread.start()
 
     def stop(self):
-        if self._updated:
-            time.sleep(self._update_interval)
+        self.print_progress()
         self._stop.set()
         self._thread.join()
 
     def update_lines(self, line_number, status):
         self.lines[line_number] = status
-        self._updated = True
         
     def _update_display(self):
         """Update the terminal display with transfer progress"""
@@ -38,12 +35,10 @@ class DisplayManager:
         
         # Update loop
         while not self._stop.is_set():
-            if ShutdownHandler().is_set():
-                # self.print_progress()
-                break
             self.print_progress()
-            self._updated = False
                     
+            if ShutdownHandler().is_set():
+                break
             # Wait before next update
             time.sleep(self._update_interval)
 
