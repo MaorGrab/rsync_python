@@ -8,6 +8,14 @@ import argparse
 import signal
 from concurrent.futures import ThreadPoolExecutor
 
+
+shutdown_event = threading.Event()
+
+def handle_sigint(signum, frame):
+    print("\nSIGINT received. Shutting down...")
+    shutdown_event.set()
+
+
 class RsyncTransfer:
     """Class to manage a single rsync transfer with progress monitoring"""
     
@@ -19,7 +27,7 @@ class RsyncTransfer:
         self.progress = 0
         self.transfer_rate = ""
         self.eta = ""
-        self.completed = False
+        self.is_completed = False
         self.error = None
         self.process = None
         
@@ -30,9 +38,11 @@ class RsyncTransfer:
             self.options.append("--info=progress2")
             
         # Build the command
-        cmd = ["rsync"] + self.options + [self.source, self.dest]
+        cmd = ["rsync", "-a"] + self.options + [self.source, self.dest]
         
         try:
+            if shutdown_event.is_set():
+                return False
             # Start the rsync process
             self.process = subprocess.Popen(
                 cmd,
@@ -44,6 +54,8 @@ class RsyncTransfer:
             
             # Monitor progress in real-time
             while self.process.poll() is None:
+                if shutdown_event.is_set():
+                    break
                 line = self.process.stdout.readline()
                 if line:
                     self._parse_progress(line.strip())
@@ -52,14 +64,18 @@ class RsyncTransfer:
             if self.process.returncode != 0:
                 self.error = self.process.stderr.read()
             else:
-                self.completed = True
-                self.progress = 100
-                
-            return self.completed
-                
+                self.is_completed = True
+                self.progress = 100           
         except Exception as e:
             self.error = str(e)
-            return False
+        
+        finally:
+            self.terminate()
+            return self.is_completed
+        
+    def terminate(self):
+        if self.process and self.process.poll() is None:
+            self.process.terminate()
     
     def _parse_progress(self, line):
         """Parse rsync progress output from --info=progress2"""
@@ -82,7 +98,7 @@ class RsyncTransfer:
         """Get a formatted status line for display"""
         if self.error:
             return f"{self.name}: ERROR - {self.error}"
-        elif self.completed:
+        elif self.is_completed:
             return f"{self.name}: Completed (100%)"
         else:
             # Create a progress bar
@@ -127,8 +143,13 @@ class TransferManager:
             futures = [executor.submit(transfer.run) for transfer in self.transfers]
             
             # Wait for all to complete
-            for future in futures:
-                future.result()
+            try:
+                for future in futures:
+                    future.result()
+            except Exception as e:
+                print('exception is tranfermanager:', e)
+            finally:
+                print('tranfermanager finally')
                 
         # Signal display thread to stop
         self.running = False
@@ -145,6 +166,8 @@ class TransferManager:
         
         # Update loop
         while self.running:
+            if shutdown_event.is_set():
+                break
             with self.display_lock:
                 # Move cursor to beginning
                 sys.stdout.write("\033[F" * len(self.transfers))
@@ -158,7 +181,7 @@ class TransferManager:
                 sys.stdout.flush()
             
             # Check if all transfers are completed
-            if all(t.completed or t.error for t in self.transfers):
+            if all(t.is_completed or t.error for t in self.transfers):
                 break
                     
             # Wait before next update
@@ -183,6 +206,8 @@ def main():
                         help='Use archive mode (-a)')
     
     args = parser.parse_args()
+
+    signal.signal(signal.SIGINT, handle_sigint)
     
     # Build rsync options
     rsync_options = []
@@ -213,6 +238,7 @@ def main():
     except Exception as e:
         print(f'Exception: {e}')
     finally:
+        shutdown_event.set()
         print('cleanup code..')
 
 
