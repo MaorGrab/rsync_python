@@ -37,7 +37,8 @@ class TransferManager:
             except Exception as e:
                 print('exception is tranfermanager:', e)
             finally:
-                print('tranfermanager finally')
+                pass
+                # print('tranfermanager finally')
                 
         # Signal display thread to stop
         self.running = False
@@ -56,7 +57,19 @@ class TransferManager:
         while self.running:
             if ShutdownHandler().is_set():
                 break
-            with self.display_lock:
+            self.print_progress()
+            
+            # Check if all transfers are completed
+            if all(t.is_completed or t.error for t in self.transfers):
+                break
+                    
+            # Wait before next update
+            time.sleep(0.5)
+        
+        self.print_progress()
+
+    def print_progress(self):
+        with self.display_lock:
                 # Move cursor to beginning
                 sys.stdout.write("\033[F" * len(self.transfers))
                 
@@ -67,10 +80,3 @@ class TransferManager:
                     sys.stdout.write("\033[K" + status + "\n")
                 
                 sys.stdout.flush()
-            
-            # Check if all transfers are completed
-            if all(t.is_completed or t.error for t in self.transfers):
-                break
-                    
-            # Wait before next update
-            time.sleep(0.5)
