@@ -4,79 +4,115 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 from rsync_python.src.shutdown_handler import ShutdownHandler
+from rsync_python.src.display_manager import DisplayManager
 
 class TransferManager:
     """Class to manage multiple concurrent rsync transfers"""
     
     def __init__(self, max_workers=3):
         self.transfers = []
-        self.max_workers = max_workers
-        self.display_lock = threading.Lock()
-        self.running = True
+        # self.max_workers = max_workers
+        self.sem = threading.Semaphore(max_workers)
+        self.refresh_interval = 0.5
+        # self.display_lock = threading.Lock()
+        # self.running = True
         
     def add_transfer(self, transfer):
         """Add a transfer to be managed"""
         self.transfers.append(transfer)
+
+    def _worker_wrapper(self, transfer):
+        with self.sem:
+            if ShutdownHandler().is_set():
+                return
+            try:
+                transfer.run()
+            except Exception as e:
+                transfer.error = f"Transfer error: {e}"
+                ShutdownHandler().shutdown_event.set()
+
+    def _start_workers(self):
+        """
+        Start one thread per transfer, each running _worker_wrapper.
+        Returns list of Thread objects.
+        """
+        threads = []
+        for t in self.transfers:
+            th = threading.Thread(target=self._worker_wrapper, args=(t,))
+            # th.daemon = True
+            th.start()
+            threads.append(th)
+        return threads
     
+
+    def _poll_and_update_display(self, display):
+        """
+        Poll each transfer's status and update the display.
+        Loop until all transfers done or shutdown_event set.
+        """
+        while not ShutdownHandler().is_set():
+            # Update lines
+            for idx, t in enumerate(self.transfers):
+                try:
+                    line = t.get_status_line()
+                except Exception as e:
+                    line = f"{t.name}: ERROR fetching status: {e}"
+                display.update_lines(idx, line)
+
+            # Check if all done (either completed or errored), or shutdown requested
+            all_done = all(
+                getattr(t, "is_completed", False) or getattr(t, "error", None)
+                for t in self.transfers
+            )
+            if all_done or ShutdownHandler().is_set():
+                break
+
+            # Wait, waking early on shutdown_event
+            # ShutdownHandler().wait(self.refresh_interval)
+            # Loop continues; if shutdown_event set, break condition triggers above
+
+    def _wait_for_threads(self, threads):
+        """
+        Join all worker threads, but remain responsive by using timeout in join.
+        """
+        for th in threads:
+            while th.is_alive():
+                th.join(timeout=1)
+
+    def _print_summary(self):
+        """Print summary of completed, failed, and cancelled transfers."""
+        completed_count = sum(1 for t in self.transfers if getattr(t, "is_completed", False))
+        failed_count = sum(1 for t in self.transfers if getattr(t, "error", None) and not getattr(t, "is_completed", False))
+        cancelled_count = 0
+        if ShutdownHandler().is_set():
+            for t in self.transfers:
+                if not getattr(t, "is_completed", False) and not getattr(t, "error", None):
+                    cancelled_count += 1
+        print(f"\nSummary: {completed_count} completed, {failed_count} failed, {cancelled_count} cancelled.")
+
     def run_all(self):
         """Run all transfers concurrently with progress display"""
-        # Start display thread
-        display_thread = threading.Thread(target=self._update_display)
-        display_thread.daemon = True
-        display_thread.start()
+        threads = self._start_workers()
+        # Main thread: poll status and update display until all threads finish or shutdown
+        display = DisplayManager(len(self.transfers))
+        display.start()
         
-        # Execute transfers using ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            # Submit all transfers
-            futures = [executor.submit(transfer.run) for transfer in self.transfers]
-            
-            # Wait for all to complete
-            try:
-                for future in futures:
-                    future.result()
-            except Exception as e:
-                print('exception is tranfermanager:', e)
-            finally:
-                pass
-                # print('tranfermanager finally')
-                
-        # Signal display thread to stop
-        self.running = False
-        display_thread.join(timeout=1.0)
-        
-        # Final display update
-        print("\nAll transfers completed!")
-    
-    def _update_display(self):
-        """Update the terminal display with transfer progress"""
-        # Initial setup - print empty lines for each transfer
-        for _ in range(len(self.transfers)):
-            print("")
-        
-        # Update loop
-        while self.running:
-            if ShutdownHandler().is_set():
-                break
-            self.print_progress()
-            
-            # Check if all transfers are completed
-            if all(t.is_completed or t.error for t in self.transfers):
-                break
-                    
-            # Wait before next update
-            time.sleep(0.5)
-        
-        self.print_progress()
-
-    def print_progress(self):
-        with self.display_lock:
-                # Move cursor to beginning
-                sys.stdout.write("\033[F" * len(self.transfers))
-                
-                # Print status for each transfer
-                for transfer in self.transfers:
-                    status = transfer.get_status_line()
-                    # Clear line and print status
-                    sys.stdout.write("\033[K" + status + "\n")
-                
-                sys.stdout.flush()
+        try:
+            # Poll transfers and update display until done or shutdown
+            self._poll_and_update_display(display)
+        except Exception as e:
+            # Unexpected error in polling
+            sys.stderr.write(f"Exception in display loop: {e}\n")
+        finally:
+            # Wait for worker threads to finish
+            self._wait_for_threads(threads)
+            # Final display update
+            for idx, t in enumerate(self.transfers):
+                try:
+                    line = t.get_status_line()
+                    display.update_lines(idx, line)
+                except Exception as e:
+                    print(f'Couldn\'t get status line')
+            # time.sleep(1)
+        display.stop()
+        self._print_summary()

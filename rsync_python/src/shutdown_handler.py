@@ -35,6 +35,10 @@ class ShutdownHandler:
             signal.signal(signal.SIGINT, self._handle_sigint)
 
     def stop(self):
+        self.shutdown_event.set()
+        self.restore_handler()
+
+    def restore_handler(self):
         """Restore the original SIGINT handler."""
         if self._orig_handler is not None:
             signal.signal(signal.SIGINT, self._orig_handler)

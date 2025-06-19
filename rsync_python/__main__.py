@@ -57,7 +57,7 @@ def main():
     except Exception as e:
         print(f'Exception: {e}')
     finally:
-        shutdown_handler.wait(timeout=2)
+        shutdown_handler.stop()
         print('cleanup code..')
 
 

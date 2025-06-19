@@ -57,6 +57,8 @@ class Transfer:
             self.error = str(e)
         
         finally:
+            line = self.process.stdout.readline()
+            self.progress.update_from_line(line)
             self.terminate()
             return self.is_completed
         
