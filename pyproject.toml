@@ -23,5 +23,5 @@ rsync_python = "rsync_python.__main__:main"
 "Repository" = "https://github.com/MaorGrab/rsync_python"
 
 [build-system]
-requires = ["setuptools>=42"]
+requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
