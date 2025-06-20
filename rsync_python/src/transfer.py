@@ -1,5 +1,4 @@
 import subprocess
-import re
 import os
 
 from rsync_python.src.shutdown_handler import ShutdownHandler
@@ -13,25 +12,19 @@ class Transfer:
         self.source = source
         self.dest = dest
         self.options = options or []
-        self.name = name or os.path.basename(source)
-        self.progress = Progress(name)
+        self.name = name or os.path.basename(os.path.normpath(source))
+        self.progress = Progress(self.name)
         self.is_completed = False
         self.error = None
         self.process = None
         
     def run(self):
         """Execute the rsync transfer and monitor progress"""
-        # Ensure we have the progress option
-        if "--info=progress2" not in self.options:
-            self.options.append("--info=progress2")
             
         # Build the command
-        cmd = ["rsync", "-a"] + self.options + [self.source, self.dest]
+        cmd = ["rsync", "-a", "--info=progress2"] + self.options + [self.source, self.dest]
         
         try:
-            # if ShutdownHandler().is_set():
-            #     return False
-            # Start the rsync process
             self.process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -42,12 +35,10 @@ class Transfer:
             
             # Monitor progress in real-time
             while self.process.poll() is None:
-                # if ShutdownHandler().is_set():
-                #     return self.is_completed
                 line = self.process.stdout.readline()
                 self.progress.update_from_line(line)
             
-            # Check for errors
+            # Check process status
             if ShutdownHandler().is_set():
                 pass
             elif self.process.returncode != 0:
@@ -62,8 +53,6 @@ class Transfer:
             return self.is_completed
         
         finally:
-            # line = self.process.stdout.readline()
-            # self.progress.update_from_line(line)
             self.terminate()
         
     def terminate(self):
