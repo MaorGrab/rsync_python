@@ -14,6 +14,7 @@ class TransferManager:
         # self.max_workers = max_workers
         self.sem = threading.Semaphore(max_workers)
         self.refresh_interval = 0.5
+        self.summary = dict.fromkeys(["completed", "failed", "cancelled"], 0)
         # self.display_lock = threading.Lock()
         # self.running = True
         
@@ -50,26 +51,35 @@ class TransferManager:
         Poll each transfer's status and update the display.
         Loop until all transfers done or shutdown_event set.
         """
-        while not ShutdownHandler().is_set():
-            # Update lines
+        while True:
+            if self._all_done or ShutdownHandler().is_set():
+                self._update_transfer_statistics(t)
+                break
             for idx, t in enumerate(self.transfers):
                 try:
                     line = t.get_status_line()
                 except Exception as e:
                     line = f"{t.name}: ERROR fetching status: {e}"
                 display.update_lines(idx, line)
-
-            # Check if all done (either completed or errored), or shutdown requested
-            all_done = all(
-                getattr(t, "is_completed", False) or getattr(t, "error", None)
-                for t in self.transfers
-            )
-            if all_done or ShutdownHandler().is_set():
-                break
+            self._update_transfer_statistics(t)
 
             # Wait, waking early on shutdown_event
             # ShutdownHandler().wait(self.refresh_interval)
             # Loop continues; if shutdown_event set, break condition triggers above
+
+    def _update_transfer_statistics(self, transfer):
+        self.summary = dict.fromkeys(["completed", "failed", "cancelled"], 0)
+        for transfer in self.transfers:
+            if transfer.is_completed:
+                self.summary['completed'] += 1
+            elif transfer.error:
+                self.summary['failed'] += 1
+            elif ShutdownHandler().is_set():
+                self.summary['cancelled'] += 1
+
+    @property
+    def _all_done(self):
+        return sum(self.summary.values()) == len(self.transfers)
 
     def _wait_for_threads(self, threads):
         """
@@ -80,15 +90,8 @@ class TransferManager:
                 th.join(timeout=1)
 
     def _print_summary(self):
-        """Print summary of completed, failed, and cancelled transfers."""
-        completed_count = sum(1 for t in self.transfers if getattr(t, "is_completed", False))
-        failed_count = sum(1 for t in self.transfers if getattr(t, "error", None) and not getattr(t, "is_completed", False))
-        cancelled_count = 0
-        if ShutdownHandler().is_set():
-            for t in self.transfers:
-                if not getattr(t, "is_completed", False) and not getattr(t, "error", None):
-                    cancelled_count += 1
-        print(f"\nSummary: {completed_count} completed, {failed_count} failed, {cancelled_count} cancelled.")
+        print(f"\nSummary: {self.summary['completed']} completed, "
+              f"{self.summary['failed']} failed, {self.summary['cancelled']} cancelled.")
 
     def run_all(self):
         """Run all transfers concurrently with progress display"""
