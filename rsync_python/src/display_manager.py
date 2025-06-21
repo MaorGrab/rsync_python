@@ -1,9 +1,11 @@
 import threading
 import time
 import sys
+from collections import Counter
 
 from rsync_python.utils.shutdown_handler import ShutdownHandler
 from rsync_python.configurations import constants
+from rsync_python.utils.transfer_status import TransferStatus
 
 class DisplayManager:
     """ """
@@ -20,9 +22,10 @@ class DisplayManager:
     def start(self):
         self._thread.start()
 
-    def stop(self):
+    def stop(self, statuses):
         self.print_progress()
         self._stop.set()
+        self.print_summary(statuses)
         self._thread.join()
 
     def update_lines(self, line_number, status):
@@ -51,3 +54,12 @@ class DisplayManager:
                     # Clear line and print status
                     sys.stdout.write(constants.CSI_ERASE_LINE + line + "\n")
                 sys.stdout.flush()
+
+    @staticmethod
+    def print_summary(statuses):
+        statuses_counter = Counter(statuses)
+        print(
+            f"\nSummary: {statuses_counter[TransferStatus.COMPLETED]} completed, "
+            f"{statuses_counter[TransferStatus.FAILED]} failed, "
+            f"{statuses_counter[TransferStatus.CANCELLED]} cancelled."
+        )

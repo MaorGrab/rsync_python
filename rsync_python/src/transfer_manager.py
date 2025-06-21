@@ -3,6 +3,7 @@ import sys
 
 from rsync_python.utils.shutdown_handler import ShutdownHandler
 from rsync_python.src.display_manager import DisplayManager
+from rsync_python.utils.transfer_status import TransferStatus
 
 class TransferManager:
     """Class to manage multiple concurrent rsync transfers"""
@@ -10,7 +11,7 @@ class TransferManager:
     def __init__(self, max_workers=3):
         self.transfers = []
         self.sem = threading.Semaphore(max_workers)
-        self.summary = dict.fromkeys(["completed", "failed", "cancelled"], 0)
+        self.statuses = []
         
     def add_transfer(self, transfer):
         """Add a transfer to be managed"""
@@ -19,6 +20,7 @@ class TransferManager:
     def _worker_wrapper(self, transfer):
         with self.sem:
             if ShutdownHandler().is_set():
+                transfer.status = TransferStatus.CANCELLED
                 return
             try:
                 transfer.run()
@@ -47,33 +49,25 @@ class TransferManager:
         """
         while True:
             if self._all_done or ShutdownHandler().is_set():
-                self._update_transfer_statistics(t)
                 break
-            for idx, t in enumerate(self.transfers):
-                try:
-                    line = t.get_status_line()
-                except Exception as e:
-                    line = f"{t.name}: ERROR fetching status: {e}"
-                display.update_lines(idx, line)
-            self._update_transfer_statistics(t)
+            self._update_display(display)
+            self._update_transfer_statistics()
 
-            # Wait, waking early on shutdown_event
-            # ShutdownHandler().wait(self.refresh_interval)
-            # Loop continues; if shutdown_event set, break condition triggers above
+    def _update_display(self, display):
+        for idx, t in enumerate(self.transfers):
+            try:
+                line = t.get_status_line()
+            except Exception as e:
+                line = f"{t.name}: ERROR fetching status: {e}"
+            display.update_lines(idx, line)
 
-    def _update_transfer_statistics(self, transfer):
-        self.summary = dict.fromkeys(["completed", "failed", "cancelled"], 0)
-        for transfer in self.transfers:
-            if transfer.is_completed:
-                self.summary['completed'] += 1
-            elif transfer.error:
-                self.summary['failed'] += 1
-            elif ShutdownHandler().is_set():
-                self.summary['cancelled'] += 1
+    def _update_transfer_statistics(self):
+        self.statuses = [transfer.status for transfer in self.transfers]
 
     @property
     def _all_done(self):
-        return sum(self.summary.values()) == len(self.transfers)
+        # RUNNING is 0 (Falsie)
+        return all(transfer.status for transfer in self.transfers)
 
     def _wait_for_threads(self, threads):
         """
@@ -82,10 +76,6 @@ class TransferManager:
         for th in threads:
             while th.is_alive():
                 th.join(timeout=1)
-
-    def _print_summary(self):
-        print(f"\nSummary: {self.summary['completed']} completed, "
-              f"{self.summary['failed']} failed, {self.summary['cancelled']} cancelled.")
 
     def run_all(self):
         """Run all transfers concurrently with progress display"""
@@ -104,11 +94,6 @@ class TransferManager:
             # Wait for worker threads to finish
             self._wait_for_threads(threads)
             # Final display update
-            for idx, t in enumerate(self.transfers):
-                try:
-                    line = t.get_status_line()
-                    display.update_lines(idx, line)
-                except Exception as e:
-                    print(f'Couldn\'t get status line: {e}')
-        display.stop()
-        self._print_summary()
+            self._update_display(display)
+            self._update_transfer_statistics()
+            display.stop(self.statuses)
