@@ -43,8 +43,7 @@ def _get_total_memory_gb() -> float:
                     mem_kb = int(line.split()[1])
                     return mem_kb / (1024 * 1024)
     except Exception:
-        pass
-    return 8.0  # Reasonable fallback value
+        return 8.0  # Reasonable fallback value
 
 def _calculate_base_workers(cpu_cores: int, storage_type: str) -> int:
     """Calculate base worker count based on CPU cores and storage type."""
