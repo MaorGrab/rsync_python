@@ -4,16 +4,16 @@ from rsync_python.configurations import constants
 
 class Progress:
     """Holds progress-related state for a transfer."""
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         self.name = name
         self.percentage = 0
         self.transfer_rate = ""
         self.eta = ""
 
-    def set_complete(self):
+    def set_complete(self) -> None:
         self.percentage = 100
 
-    def update_from_line(self, line):
+    def update_from_line(self, line: str) -> None:
         """Parse rsync output line to update progress state."""
         if not line:
             return
@@ -26,7 +26,7 @@ class Progress:
         eta = re.search(r'(\d+:\d+:\d+)', line)
         if eta: self.eta = eta.group(1)
 
-    def status_line(self, error=None):
+    def status_line(self, error: str = '') -> str:
         if error:
             return f"{self.name}: ERROR - {error}"
         if self.percentage == 100:
@@ -39,7 +39,7 @@ class Progress:
         return status
     
     @property
-    def bar(self):
+    def bar(self) -> str:
         bar_width = constants.PROGRESS_BAR_WIDTH
         filled = int(self.percentage / 100 * bar_width)
         bar = constants.PROGRESS_BAR_FULL * filled

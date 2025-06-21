@@ -8,8 +8,7 @@ from rsync_python.utils.transfer_status import TransferStatus
 
 class Transfer:
     """Class to manage a single rsync transfer with progress monitoring"""
-    
-    def __init__(self, source, dest, options=None, name=None):
+    def __init__(self, source: str, dest: str, options: list = None, name: str = None) -> None:
         self.source = source
         self.dest = dest
         self.options = options or []
@@ -19,8 +18,8 @@ class Transfer:
         self._error = None
         self._process = None
         self.status = None
-        
-    def run(self):
+
+    def run(self) -> None:
         """Execute the rsync transfer and monitor progress"""
             
         # Build the command
@@ -56,15 +55,15 @@ class Transfer:
         finally:
             self.update_status()
             self.terminate()
-        
-    def terminate(self):
+
+    def terminate(self) -> None:
         if self._process and self._process.poll() is None:
             self._process.terminate()
 
-    def get_status_line(self):
+    def get_status_line(self) -> str:
         return self.progress.status_line(self._error)
-    
-    def update_status(self):
+
+    def update_status(self) -> None:
         if self._is_completed:
             self.status = TransferStatus.COMPLETED
         elif self._error:

@@ -1,23 +1,25 @@
 import threading
 import sys
+from typing import List
 
-from rsync_python.utils.shutdown_handler import ShutdownHandler
+from rsync_python.src.transfer import Transfer
 from rsync_python.src.display_manager import DisplayManager
 from rsync_python.utils.transfer_status import TransferStatus
+from rsync_python.utils.shutdown_handler import ShutdownHandler
 
 class TransferManager:
     """Class to manage multiple concurrent rsync transfers"""
     
-    def __init__(self, max_workers=3):
+    def __init__(self, max_workers: int = 3) -> None:
         self.transfers = []
         self.sem = threading.Semaphore(max_workers)
         self.statuses = []
         
-    def add_transfer(self, transfer):
+    def add_transfer(self, transfer: Transfer) -> None:
         """Add a transfer to be managed"""
         self.transfers.append(transfer)
 
-    def _worker_wrapper(self, transfer):
+    def _worker_wrapper(self, transfer: Transfer) -> None:
         with self.sem:
             if ShutdownHandler().is_set():
                 transfer.status = TransferStatus.CANCELLED
@@ -26,23 +28,30 @@ class TransferManager:
                 transfer.run()
             except Exception as e:
                 transfer.error = f"Transfer error: {e}"
-                ShutdownHandler().shutdown_event.set()
+                transfer.update_status()
 
-    def _start_workers(self):
+    def _start_workers(self) -> List[threading.Thread]:
         """
         Start one thread per transfer, each running _worker_wrapper.
         Returns list of Thread objects.
         """
         threads = []
-        for t in self.transfers:
-            th = threading.Thread(target=self._worker_wrapper, args=(t,))
-            # th.daemon = True
-            th.start()
-            threads.append(th)
+        for transfer in self.transfers:
+            thread = threading.Thread(target=self._worker_wrapper, args=(transfer,))
+            # thread.daemon = True
+            thread.start()
+            threads.append(thread)
         return threads
     
-
-    def _poll_and_update_display(self, display):
+    def _wait_for_threads(self, threads: List[threading.Thread]) -> None:
+        """
+        Join all worker threads, but remain responsive by using timeout in join.
+        """
+        for thread in threads:
+            while thread.is_alive():
+                thread.join(timeout=1)
+    
+    def _poll_and_update_display(self, display: DisplayManager) -> None:
         """
         Poll each transfer's status and update the display.
         Loop until all transfers done or shutdown_event set.
@@ -53,47 +62,34 @@ class TransferManager:
             self._update_display(display)
             self._update_transfer_statistics()
 
-    def _update_display(self, display):
+    def _update_display(self, display: DisplayManager) -> None:
         for idx, t in enumerate(self.transfers):
             try:
                 line = t.get_status_line()
             except Exception as e:
                 line = f"{t.name}: ERROR fetching status: {e}"
-            display.update_lines(idx, line)
+            display.update_line(idx, line)
 
-    def _update_transfer_statistics(self):
+    def _update_transfer_statistics(self) -> None:
         self.statuses = [transfer.status for transfer in self.transfers]
 
-    @property
-    def _all_done(self):
-        # RUNNING is 0 (Falsie)
-        return all(transfer.status for transfer in self.transfers)
-
-    def _wait_for_threads(self, threads):
-        """
-        Join all worker threads, but remain responsive by using timeout in join.
-        """
-        for th in threads:
-            while th.is_alive():
-                th.join(timeout=1)
-
-    def run_all(self):
+    def run_all(self) -> None:
         """Run all transfers concurrently with progress display"""
         threads = self._start_workers()
-        # Main thread: poll status and update display until all threads finish or shutdown
         display = DisplayManager(len(self.transfers))
         display.start()
-        
         try:
             # Poll transfers and update display until done or shutdown
             self._poll_and_update_display(display)
         except Exception as e:
-            # Unexpected error in polling
-            sys.stderr.write(f"Exception in display loop: {e}\n")
+            sys.stderr.write(f"Unexpected error in polling: {e}\n")
         finally:
-            # Wait for worker threads to finish
-            self._wait_for_threads(threads)
-            # Final display update
-            self._update_display(display)
+            self._wait_for_threads(threads)  # Wait for worker threads to finish
+            self._update_display(display)  # Final display update
             self._update_transfer_statistics()
             display.stop(self.statuses)
+
+    @property
+    def _all_done(self) -> bool:
+        # RUNNING is 0 (Falsie)
+        return all(transfer.status for transfer in self.transfers)

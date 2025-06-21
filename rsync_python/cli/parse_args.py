@@ -1,4 +1,5 @@
 import argparse
+from typing import List
 
 
 def parse_args() -> None:
@@ -21,7 +22,7 @@ def parse_args() -> None:
     args = parser.parse_args()
     return args
 
-def get_rsync_options(args: argparse) -> list:
+def get_rsync_options(args: argparse) -> List[str]:
     rsync_options = []
     if args.partial:
         rsync_options.append("--partial")

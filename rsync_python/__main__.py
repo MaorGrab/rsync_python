@@ -4,7 +4,7 @@ from rsync_python.utils.shutdown_handler import ShutdownHandler
 from rsync_python.cli.parse_args import parse_args, get_rsync_options
 
 
-def main():
+def main() -> None:
     """Main entry point for the transfer tool"""
     args = parse_args()
     rsync_options = get_rsync_options(args)  # Build rsync options
@@ -32,8 +32,6 @@ def main():
         print(f'Exception: {e}')
     finally:
         shutdown_handler.stop()
-        print('cleanup code..')
-
 
 if __name__ == "__main__":
     main()
