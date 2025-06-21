@@ -1,9 +1,7 @@
 import threading
-import time
 import sys
-from concurrent.futures import ThreadPoolExecutor
 
-from rsync_python.src.shutdown_handler import ShutdownHandler
+from rsync_python.utils.shutdown_handler import ShutdownHandler
 from rsync_python.src.display_manager import DisplayManager
 
 class TransferManager:
@@ -11,12 +9,8 @@ class TransferManager:
     
     def __init__(self, max_workers=3):
         self.transfers = []
-        # self.max_workers = max_workers
         self.sem = threading.Semaphore(max_workers)
-        self.refresh_interval = 0.5
         self.summary = dict.fromkeys(["completed", "failed", "cancelled"], 0)
-        # self.display_lock = threading.Lock()
-        # self.running = True
         
     def add_transfer(self, transfer):
         """Add a transfer to be managed"""
@@ -116,6 +110,5 @@ class TransferManager:
                     display.update_lines(idx, line)
                 except Exception as e:
                     print(f'Couldn\'t get status line: {e}')
-            # time.sleep(1)
         display.stop()
         self._print_summary()

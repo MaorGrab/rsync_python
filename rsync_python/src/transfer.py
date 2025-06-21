@@ -1,8 +1,8 @@
 import subprocess
 import os
 
-from rsync_python.src.shutdown_handler import ShutdownHandler
-from rsync_python.src.progress import Progress
+from rsync_python.utils.shutdown_handler import ShutdownHandler
+from rsync_python.utils.progress import Progress
 
 
 class Transfer:

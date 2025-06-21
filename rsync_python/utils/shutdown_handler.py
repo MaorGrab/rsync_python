@@ -2,6 +2,8 @@ import threading
 import signal
 import sys
 
+from rsync_python.configurations import constants
+
 class ShutdownHandler:
     """
     Encapsulates a threading.Event triggered by SIGINT (Ctrl+C).
@@ -46,7 +48,7 @@ class ShutdownHandler:
 
     def _handle_sigint(self, signum, frame):
         """Internal SIGINT handler: sets shutdown_event."""
-        sys.stdout.write("\033[F\n")
+        print(constants.CSI_PREV_LINE)
         self.shutdown_event.set()
 
     def is_set(self) -> bool:

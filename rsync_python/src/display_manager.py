@@ -2,7 +2,8 @@ import threading
 import time
 import sys
 
-from rsync_python.src.shutdown_handler import ShutdownHandler
+from rsync_python.utils.shutdown_handler import ShutdownHandler
+from rsync_python.configurations import constants
 
 class DisplayManager:
     """ """
@@ -14,7 +15,7 @@ class DisplayManager:
         self._thread = display_thread
         self.display_lock = threading.Lock()
         self._stop = threading.Event()
-        self._update_interval = 0.5
+        self._update_interval = constants.DISPLAY_UPDATE_INTERVAL
 
     def start(self):
         self._thread.start()
@@ -36,7 +37,6 @@ class DisplayManager:
         # Update loop
         while not self._stop.is_set():
             self.print_progress()
-                    
             if ShutdownHandler().is_set():
                 break
             # Wait before next update
@@ -44,12 +44,10 @@ class DisplayManager:
 
     def print_progress(self):
         with self.display_lock:
-                # Move cursor to beginning
-                sys.stdout.write("\033[F" * len(self.lines))
-                
+                # Move cursor to beginning of previous line
+                sys.stdout.write(constants.CSI_PREV_LINE * len(self.lines))
                 # Print status for each transfer
                 for line in self.lines:
                     # Clear line and print status
-                    sys.stdout.write("\033[K" + line + "\n")
-                
+                    sys.stdout.write(constants.CSI_ERASE_LINE + line + "\n")
                 sys.stdout.flush()

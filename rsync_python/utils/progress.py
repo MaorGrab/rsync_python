@@ -1,5 +1,7 @@
 import re
 
+from rsync_python.configurations import constants
+
 class Progress:
     """Holds progress-related state for a transfer."""
     def __init__(self, name):
@@ -15,8 +17,8 @@ class Progress:
         """Parse rsync output line to update progress state."""
         if not line:
             return
-        pct = re.search(r'(\d+)%', line)
-        if pct: self.percentage = int(pct.group(1))
+        prcnt = re.search(r'(\d+)%', line)
+        if prcnt: self.percentage = int(prcnt.group(1))
 
         rate = re.search(r'(\d+\.\d+\w?B/s)', line)
         if rate: self.transfer_rate = rate.group(1)
@@ -29,12 +31,17 @@ class Progress:
             return f"{self.name}: ERROR - {error}"
         if self.percentage == 100:
             return f"{self.name}: Completed (100%)"
-        bar_width = 20
-        filled = int(self.percentage / 100 * bar_width)
-        bar = '█' * filled + '░' * (bar_width - filled)
-        s = f"{self.name}: [{bar}] {self.percentage}%"
+        status = f"{self.name}: [{self.bar}] {self.percentage}%"
         if self.transfer_rate:
-            s += f" {self.transfer_rate}"
+            status += f" {self.transfer_rate}"
         if self.eta:
-            s += f" ETA: {self.eta}"
-        return s
+            status += f" ETA: {self.eta}"
+        return status
+    
+    @property
+    def bar(self):
+        bar_width = constants.PROGRESS_BAR_WIDTH
+        filled = int(self.percentage / 100 * bar_width)
+        bar = constants.PROGRESS_BAR_FULL * filled
+        bar += constants.PROGRESS_BAR_EMPTY * (bar_width - filled)
+        return bar
