@@ -3,6 +3,7 @@ from typing import List
 
 
 def parse_args() -> None:
+    """Parse and return command-line arguments for the transfer tool."""
     parser = argparse.ArgumentParser(
         description='Transfer files/folders using rsync with progress display'
     )
@@ -23,6 +24,7 @@ def parse_args() -> None:
     return args
 
 def get_rsync_options(args: argparse) -> List[str]:
+    """Build and return a list of rsync options based on parsed arguments."""
     rsync_options = []
     if args.partial:
         rsync_options.append("--partial")
