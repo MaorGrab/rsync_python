@@ -13,7 +13,7 @@ def main() -> None:
     shutdown_handler.start()
     
     # Create transfer manager
-    manager = TransferManager(max_workers=args.parallel)
+    manager = TransferManager(worker_count=args.parallel)
     
     # Add transfers
     for source in args.sources:
@@ -25,7 +25,7 @@ def main() -> None:
         manager.add_transfer(transfer)
     
     # Run all transfers
-    print(f"Starting {len(args.sources)} transfers with {args.parallel} workers...")
+    print(f"Starting {len(args.sources)} transfers with {manager.worker_count} workers...")
     try:
         manager.run_all()
     except Exception as e:

@@ -5,15 +5,17 @@ from typing import List
 from rsync_python.src.transfer import Transfer
 from rsync_python.src.display_manager import DisplayManager
 from rsync_python.utils.transfer_status import TransferStatus
+from rsync_python.utils.optimal_worker_count import recommend_worker_count
 from rsync_python.utils.shutdown_handler import ShutdownHandler
 
 class TransferManager:
     """Manages concurrent execution of multiple rsync transfers."""
     
-    def __init__(self, max_workers: int = 3) -> None:
+    def __init__(self, worker_count: int = 0) -> None:
         self.transfers = []
-        self.sem = threading.Semaphore(max_workers)
-        self.statuses = []
+        self.worker_count = worker_count or recommend_worker_count()
+        self.sem = threading.Semaphore(self.worker_count)
+        self.statuses = []  # transfer statuses
         
     def add_transfer(self, transfer: Transfer) -> None:
         """Add a transfer to the execution queue."""

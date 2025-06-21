@@ -13,7 +13,7 @@ def parse_args() -> None:
     parser.add_argument('destination', help='Destination path')
     
     # Optional arguments
-    parser.add_argument('--parallel', type=int, default=3, 
+    parser.add_argument('--parallel', type=int, default=0, 
                         help='Number of parallel transfers (default: 3)')
     parser.add_argument('--partial', action='store_true',
                         help='Save partial transfer files if transfer is interrupted')
