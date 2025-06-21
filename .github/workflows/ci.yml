@@ -91,6 +91,7 @@ jobs:
 
       - name: Lint with pylint
         run: |
+          pip install pylint
           find . -name "*.py" -not -path "./venv/*" -not -path "./.venv/*" | xargs pylint
 
   # test:
