@@ -1,5 +1,5 @@
-from rsync_python.src.transfer import Transfer
-from rsync_python.src.transfer_manager import TransferManager
+from rsync_python.core.transfer import Transfer
+from rsync_python.core.transfer_manager import TransferManager
 from rsync_python.utils.shutdown_handler import ShutdownHandler
 from rsync_python.cli.parse_args import parse_args, get_rsync_options
 

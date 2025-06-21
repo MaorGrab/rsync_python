@@ -2,8 +2,8 @@ import threading
 import sys
 from typing import List
 
-from rsync_python.src.transfer import Transfer
-from rsync_python.src.display_manager import DisplayManager
+from rsync_python.core.transfer import Transfer
+from rsync_python.core.display_manager import DisplayManager
 from rsync_python.utils.transfer_status import TransferStatus
 from rsync_python.utils.optimal_worker_count import recommend_worker_count
 from rsync_python.utils.shutdown_handler import ShutdownHandler
