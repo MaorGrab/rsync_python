@@ -1,0 +1,9 @@
+# Progress bar
+PROGRESS_BAR_FULL = '█'
+PROGRESS_BAR_EMPTY = '░'
+PROGRESS_BAR_WIDTH = 20
+
+# Display progress
+DISPLAY_UPDATE_INTERVAL = 0.5  # sec
+CSI_PREV_LINE = '\033[F'
+CSI_ERASE_LINE = '\033[K'

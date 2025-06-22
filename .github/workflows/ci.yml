@@ -1,0 +1,95 @@
+name: Python CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.13.3'
+
+jobs:
+  pre_job:
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          cancel_others: 'true'
+          concurrent_skipping: 'same_content_newer'
+          skip_after_successful_duplicate: 'true'
+          paths_ignore: '["**/README.md", "**/docs/**", "LICENSE", "**/data/**"]'
+          do_not_skip: '["workflow_dispatch", "schedule", "merge_group"]'
+
+  build:
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore cached virtual environment
+        uses: actions/cache/restore@v4
+        id: cache-venv-restore
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}
+
+      - name: Set up virtual environment
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=${{ github.workspace }}/.venv" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        if: steps.cache-venv-restore.outputs.cache-hit != 'true'
+        run: |
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -e .  # Install the package in editable mode
+
+      - name: Save virtual environment to cache
+        if: steps.cache-venv-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}
+
+  lint:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore cached virtual environment
+        uses: actions/cache/restore@v4
+        id: cache-venv-restore
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}
+
+      - name: Set up virtual environment
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=${{ github.workspace }}/.venv" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
+
+      - name: Lint with pylint
+        run: |
+          pip install pylint
+          find . -name "*.py" -not -path "./venv/*" -not -path "./.venv/*" | xargs pylint
