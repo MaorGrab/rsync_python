@@ -1,5 +1,5 @@
-import threading
 import sys
+import threading
 from typing import List
 
 from rsync_python.core.transfer import Transfer
@@ -8,15 +8,16 @@ from rsync_python.utils.transfer_status import TransferStatus
 from rsync_python.utils.optimal_worker_count import recommend_worker_count
 from rsync_python.utils.shutdown_handler import ShutdownHandler
 
+
 class TransferManager:
     """Manages concurrent execution of multiple rsync transfers."""
-    
+
     def __init__(self, worker_count: int = 0) -> None:
         self.transfers = []
         self.worker_count = worker_count or recommend_worker_count()
         self.sem = threading.Semaphore(self.worker_count)
         self.statuses = []  # transfer statuses
-        
+
     def add_transfer(self, transfer: Transfer) -> None:
         """Add a transfer to the execution queue."""
         self.transfers.append(transfer)
@@ -29,7 +30,7 @@ class TransferManager:
                 return
             try:
                 transfer.run()
-            except Exception as e:
+            except Exception as e:  # pylint: disable=W0718  #  raise on any exception
                 transfer.error = f"Transfer error: {e}"
                 transfer.update_status()
 
@@ -42,13 +43,13 @@ class TransferManager:
             thread.start()
             threads.append(thread)
         return threads
-    
+
     def _wait_for_threads(self, threads: List[threading.Thread]) -> None:
         """Join all worker threads with responsive timeout."""
         for thread in threads:
             while thread.is_alive():
                 thread.join(timeout=1)
-    
+
     def _poll_and_update_display(self, display: DisplayManager) -> None:
         """Continuously update display until all transfers complete or SIGINT recieved."""
         while True:
@@ -62,7 +63,7 @@ class TransferManager:
         for idx, t in enumerate(self.transfers):
             try:
                 line = t.get_status_line()
-            except Exception as e:
+            except Exception as e:  # pylint: disable=W0718  #  raise on any exception
                 line = f"{t.name}: ERROR fetching status: {e}"
             display.update_line(idx, line)
 
@@ -78,7 +79,7 @@ class TransferManager:
         try:
             # Poll transfers and update display until done or shutdown
             self._poll_and_update_display(display)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=W0718  #  raise on any exception
             sys.stderr.write(f"Unexpected error in polling: {e}\n")
         finally:
             self._wait_for_threads(threads)  # Wait for worker threads to finish

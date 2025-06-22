@@ -7,6 +7,7 @@ from typing import List
 from rsync_python.configurations import constants
 from rsync_python.utils.transfer_status import TransferStatus
 
+
 class DisplayManager:
     """Manages real-time display of multiple transfer progress lines."""
     def __init__(self, amount_of_transfers: int) -> None:
@@ -35,7 +36,7 @@ class DisplayManager:
     def update_line(self, line_number: int, status_line: str) -> None:
         """Update a specific progress line."""
         self._lines[line_number] = status_line
-        
+
     def _update_display(self) -> None:
         """Continuously update terminal display with current progress."""
         for _ in range(len(self._lines)):  # Initial setup - print empty lines for each transfer
@@ -47,13 +48,13 @@ class DisplayManager:
     def _print_progress(self) -> None:
         """Print all progress lines with cursor positioning."""
         with self._display_lock:
-                # Move cursor to beginning of previous line
-                sys.stdout.write(constants.CSI_PREV_LINE * len(self._lines))
-                # Print status for each transfer
-                for line in self._lines:
-                    # Clear line and print status
-                    sys.stdout.write(constants.CSI_ERASE_LINE + line + "\n")
-                sys.stdout.flush()
+            # Move cursor to beginning of previous line
+            sys.stdout.write(constants.CSI_PREV_LINE * len(self._lines))
+            # Print status for each transfer
+            for line in self._lines:
+                # Clear line and print status
+                sys.stdout.write(constants.CSI_ERASE_LINE + line + "\n")
+            sys.stdout.flush()
 
     @staticmethod
     def print_summary(statuses: List[TransferStatus]) -> None:

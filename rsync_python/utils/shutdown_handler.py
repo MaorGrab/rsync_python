@@ -29,7 +29,7 @@ class ShutdownHandler:
         return cls._instance
 
     def __init__(self) -> None:
-        if hasattr(self, "_initialized") and self._initialized:
+        if getattr(self, "_initialized", False):
             return
         self.shutdown_event = threading.Event()
         self._orig_handler = None
@@ -57,7 +57,7 @@ class ShutdownHandler:
             signal.signal(signal.SIGINT, self._orig_handler)
             self._orig_handler = None
 
-    def _handle_sigint(self, signum, frame) -> None:
+    def _handle_sigint(self, signum, frame) -> None:  # pylint: disable=W0613  # allow unused args
         """Internal SIGINT handler: sets shutdown_event."""
         print(constants.CSI_PREV_LINE)
         self.shutdown_event.set()

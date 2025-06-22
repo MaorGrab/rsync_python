@@ -1,5 +1,6 @@
 from enum import IntEnum
 
+
 class TransferStatus(IntEnum):
     """
     Represents the status of a transfer operation.

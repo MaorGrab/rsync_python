@@ -11,10 +11,10 @@ def main() -> None:
 
     shutdown_handler = ShutdownHandler()
     shutdown_handler.start()
-    
+
     # Create transfer manager
     manager = TransferManager(worker_count=args.parallel)
-    
+
     # Add transfers
     for source in args.sources:
         transfer = Transfer(
@@ -23,12 +23,12 @@ def main() -> None:
             options=rsync_options,
         )
         manager.add_transfer(transfer)
-    
+
     # Run all transfers
     print(f"Starting {len(args.sources)} transfers with {manager.worker_count} workers...")
     try:
         manager.run_all()
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0718  #  raise on any exception
         print(f'Exception: {e}')
     finally:
         shutdown_handler.stop()

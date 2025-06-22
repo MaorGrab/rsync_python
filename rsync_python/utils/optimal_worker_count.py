@@ -22,28 +22,29 @@ def _detect_storage_type() -> str:
             "df / | tail -1 | awk '{print $1}'",
             shell=True, text=True
         ).strip()
-        
+
         if df_output.startswith("/dev/"):
-            device = df_output.split('/')[-1].rstrip('0123456789')
+            device = df_output.rsplit('/', maxsplit=1)[-1].rstrip('0123456789')
             rotational_path = f"/sys/block/{device}/queue/rotational"
-            
+
             if os.path.exists(rotational_path):
-                with open(rotational_path) as f:
+                with open(rotational_path, encoding="utf‑8") as f:
                     return "hdd" if f.read().strip() == "1" else "ssd"
-    except Exception:
+    except Exception:  # pylint: disable=W0718  #  raise on any exception
         pass
     return "ssd"  # Default assumption
 
 def _get_total_memory_gb() -> float:
     """Retrieve total system memory in gigabytes."""
     try:
-        with open("/proc/meminfo") as f:
+        with open("/proc/meminfo", encoding="utf‑8") as f:
             for line in f:
                 if line.startswith("MemTotal"):
                     mem_kb = int(line.split()[1])
                     return mem_kb / (1024 * 1024)
-    except Exception:
-        return 8.0  # Reasonable fallback value
+    except Exception:  # pylint: disable=W0718  #  raise on any exception
+        pass
+    return 8.0  # Reasonable fallback value
 
 def _calculate_base_workers(cpu_cores: int, storage_type: str) -> int:
     """Calculate base worker count based on CPU cores and storage type."""
