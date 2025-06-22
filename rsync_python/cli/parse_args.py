@@ -14,7 +14,7 @@ def parse_args() -> None:
 
     # Optional arguments
     parser.add_argument('--parallel', type=int, default=0,
-                        help='Number of parallel transfers (default: 3)')
+                        help='Number of parallel transfers (default: set based on specs)')
     parser.add_argument('--partial', action='store_true',
                         help='Save partial transfer files if transfer is interrupted')
     parser.add_argument('--bwlimit', type=int,

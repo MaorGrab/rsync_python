@@ -107,12 +107,20 @@ Keep partially transferred files if a transfer is interrupted:
 python -m rsync_python /src/file1.txt /src/dirA /dst/ --partial
 ```
 
+### Limit transfer bandwidth
+
+Limit the transfer bandwidth in KB/s:
+
+```bash
+python -m rsync_python /src/file1.txt /src/dirA /dst/ --bwlimit 200
+```
+
 ### Combine Options
 
 Use multiple options together:
 
 ```bash
-python -m rsync_python /src/file1.txt /src/dirA /dst/ --parallel 8 --partial 
+python -m rsync_python /src/file1.txt /src/dirA /dst/ --parallel 8 --partial --bwlimit 200
 ```
 
 ### Graceful Shutdown
