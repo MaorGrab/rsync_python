@@ -93,33 +93,3 @@ jobs:
         run: |
           pip install pylint
           find . -name "*.py" -not -path "./venv/*" -not -path "./.venv/*" | xargs pylint
-
-  # test:
-  #     needs: build
-  #     runs-on: ubuntu-latest
-  #     steps:
-  #       - name: Checkout code
-  #         uses: actions/checkout@v3
-
-  #       - name: Set up Python
-  #         uses: actions/setup-python@v4
-  #         with:
-  #           python-version: ${{ env.PYTHON_VERSION }}
-
-  #       - name: Restore cached virtual environment
-  #         uses: actions/cache/restore@v4
-  #         id: cache-venv-restore
-  #         with:
-  #           path: .venv
-  #           key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}
-
-  #       - name: Set up virtual environment
-  #         run: |
-  #           python -m venv .venv
-  #           echo "VIRTUAL_ENV=${{ github.workspace }}/.venv" >> $GITHUB_ENV
-  #           echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
-
-  #       - name: Run tests with pytest
-  #         run: |
-  #           source .venv/bin/activate
-  #           pytest tests/
